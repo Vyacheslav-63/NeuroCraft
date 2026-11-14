@@ -105,6 +105,19 @@ npm start
 
 ---
 
+## Глобальный деплой (доступ из любой страны без AI Studio)
+
+Ссылки вида `*.run.app` внутри AI Studio ограничены авторизацией и региональной политикой Google AI Studio. Чтобы приложение открывалось и устанавливалось как PWA **у любого пользователя в любой стране мира**:
+
+- **Render.com (1 клик через `render.yaml`):** подключите GitHub-репозиторий как Blueprint или Web Service (`Build: npm install && npm run build`, `Start: npm start`, опционально `GEMINI_API_KEY`).
+- **Docker / Railway / Fly.io / любой VPS:** используйте готовый `Dockerfile`:
+  ```bash
+  docker build -t neurocraft .
+  docker run -p 3000:3000 -e GEMINI_API_KEY="ВАШ_КЛЮЧ" neurocraft
+  ```
+
+---
+
 ## Лицензия
 
 Проект распространяется под лицензией MIT. Подробнее см. файл [LICENSE](./LICENSE).

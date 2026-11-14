@@ -30,25 +30,27 @@ function getGeminiClient(): GoogleGenAI | null {
   });
 }
 
-function isQuotaOrRateLimitError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err ?? "");
+function isQuotaOrRegionUnavailable(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err ?? "")).toLowerCase();
   return (
     msg.includes("429") ||
-    msg.includes("RESOURCE_EXHAUSTED") ||
-    msg.toLowerCase().includes("quota") ||
-    msg.toLowerCase().includes("rate limit")
+    msg.includes("resource_exhausted") ||
+    msg.includes("quota") ||
+    msg.includes("rate limit") ||
+    msg.includes("location is not supported") ||
+    msg.includes("failed_precondition")
   );
 }
 
 function formatFriendlyError(err: unknown, language = "ru"): { status: number; message: string; code?: string } {
   const raw = err instanceof Error ? err.message : String(err ?? "");
-  if (isQuotaOrRateLimitError(err)) {
+  if (isQuotaOrRegionUnavailable(err)) {
     const message =
       language === "en"
-        ? "Gemini API quota temporarily exceeded (429). Check plan/limits in Google AI Studio or retry later."
+        ? "Gemini API is temporarily unavailable in this region or quota exceeded."
         : language === "es"
-          ? "Cuota de Gemini API temporalmente agotada (429). Revisa los límites en Google AI Studio."
-          : "Лимит запросов Gemini API временно исчерпан (429 RESOURCE_EXHAUSTED). Проверьте квоту или биллинг в Google AI Studio.";
+          ? "Gemini API no está disponible temporalmente en esta región o se agotó la cuota."
+          : "Сервис Gemini API временно ограничен по квоте или региону — используется локальный режим.";
     return { status: 429, message, code: "RESOURCE_EXHAUSTED" };
   }
   if (raw.includes("403") || raw.includes("PERMISSION_DENIED") || raw.includes("API_KEY_INVALID")) {
@@ -75,7 +77,7 @@ async function generateWithFallback(
       config: params.config as never,
     });
   } catch (err: unknown) {
-    if (!isQuotaOrRateLimitError(err)) {
+    if (!isQuotaOrRegionUnavailable(err)) {
       throw err;
     }
     // Retry on lighter model without Google Search grounding or thinking overhead
@@ -192,7 +194,8 @@ app.post("/api/prompt-evaluate", async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       res.status(503).json({
-        error: "Серверный API-ключ Gemini не настроен в среде выполнения.",
+        error: "Серверный API-ключ Gemini не настроен — включена локальная оценка.",
+        code: "RESOURCE_EXHAUSTED",
       });
       return;
     }
@@ -285,7 +288,8 @@ app.post("/api/agent-run", async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       res.status(503).json({
-        error: "Серверный API-ключ Gemini не настроен в среде выполнения.",
+        error: "Серверный API-ключ Gemini не настроен — включена локальная симуляция агента.",
+        code: "RESOURCE_EXHAUSTED",
       });
       return;
     }
@@ -352,7 +356,8 @@ app.post("/api/mvp-generate", async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       res.status(503).json({
-        error: "Серверный API-ключ Gemini не настроен в среде выполнения.",
+        error: "Серверный API-ключ Gemini не настроен — использован локальный шаблон MVP.",
+        code: "RESOURCE_EXHAUSTED",
       });
       return;
     }
@@ -474,7 +479,7 @@ ${langHint}
       fallbackMode: false,
     });
   } catch (err: unknown) {
-    if (isQuotaOrRateLimitError(err)) {
+    if (isQuotaOrRegionUnavailable(err)) {
       const { question = "", topicContext, language = "ru" } = req.body ?? {};
       res.json({
         answer: buildLocalMentorAnswer(String(question), topicContext, language),
