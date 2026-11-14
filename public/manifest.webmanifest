@@ -1,0 +1,36 @@
+{
+  "id": "/",
+  "name": "NeuroCraft — Академия ИИ",
+  "short_name": "NeuroCraft",
+  "description": "Интерактивное игровое приложение для изучения LLM, промпт-инжиниринга, AI-агентов, веб-кодинга и монетизации.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "lang": "ru",
+  "theme_color": "#0B0F19",
+  "background_color": "#0B0F19",
+  "categories": ["education", "developer", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

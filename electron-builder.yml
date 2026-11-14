@@ -1,0 +1,36 @@
+appId: ru.postavnoy.neurocraft
+productName: NeuroCraft
+copyright: Copyright (c) 2026 Поставной Вячеслав Алексеевич
+extraMetadata:
+  main: electron/main.cjs
+directories:
+  output: release
+files:
+  - dist/**/*
+  - electron/main.cjs
+  - public/pwa-512x512.png
+  - public/favicon.ico
+  - package.json
+win:
+  target:
+    - nsis
+    - portable
+  icon: public/favicon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+mac:
+  category: public.app-category.education
+  target:
+    - dmg
+    - zip
+  icon: public/pwa-512x512.png
+dmg:
+  title: NeuroCraft AI Academy
+linux:
+  target:
+    - AppImage
+  category: Education
+  icon: public/pwa-512x512.png

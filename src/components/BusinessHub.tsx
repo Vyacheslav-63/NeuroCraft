@@ -18,6 +18,7 @@ import { ALL_WEEKLY_BADGES } from '../data/weeklyMissions';
 import { BusinessCase, PlayerProgress } from '../types/app';
 import { buildCertificateReport } from '../utils/certificateGenerator';
 import { AiQueryCallout } from './AiQueryCallout';
+import { PWAInstallButton } from './PWAInstallButton';
 
 import { AppCurrency, CURRENCY_CONFIG, formatMoneyFromRub } from '../i18n/locale';
 
@@ -664,6 +665,8 @@ export function BusinessHub({
               {progress.registration ? 'Изменить' : 'Регистрация'}
             </button>
           </section>
+
+          <PWAInstallButton />
 
           {/* Student Rank Card */}
           <section className="rounded-2xl bg-[#111827] border border-[#334155]/70 p-4 sm:p-5 space-y-4">

@@ -213,7 +213,41 @@ export function AiLab({ language, onAgentRun, onMvpBuilt }: Props) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Ошибка запуска агента');
+      if (!res.ok) {
+        if (res.status === 429 || data.code === 'RESOURCE_EXHAUSTED') {
+          const isAttack = /игнор|system prompt|парол|инструкц/i.test(userQuery);
+          const hasPii = /(\+7|8\s?\(?\d{3}|\d{4}\s?\d{4})/i.test(userQuery);
+          const chosenTool =
+            isAttack && injectionShield
+              ? 'Guardrail Shield'
+              : selectedTools[0] || 'База знаний (RAG)';
+          setAgentResult({
+            safetyStatus:
+              isAttack && injectionShield
+                ? 'Prompt Injection заблокирован: системный промпт защищён.'
+                : piiMasking && hasPii
+                  ? 'Персональные данные (телефон/карта) замаскированы перед ответом.'
+                  : `Guardrails активны (лимит шагов: ${maxSteps}).`,
+            thought:
+              isAttack && injectionShield
+                ? 'Обнаружена попытка переопределить системные инструкции — отклоняю запрос и остаюсь в заданной роли.'
+                : `Анализирую запрос в режиме «${memoryMode}» и вызываю инструмент «${chosenTool}».`,
+            toolUsed: chosenTool,
+            toolResult:
+              isAttack && injectionShield
+                ? 'BLOCKED: override_system_prompt'
+                : `Найдены релевантные данные для «${agentName}» (шаг 1/${maxSteps}).`,
+            finalAnswer:
+              isAttack && injectionShield
+                ? 'Я не могу раскрывать системные инструкции или обходить правила безопасности. Задайте рабочий вопрос по теме.'
+                : `Локальная симуляция агента «${agentName}» (квота Gemini API временно исчерпана): запрос обработан с использованием инструмента «${chosenTool}» согласно вашему системному промпту.`,
+          });
+          setAgentError('Лимит Gemini API (429) временно исчерпан — показана локальная ReAct-симуляция.');
+          onAgentRun();
+          return;
+        }
+        throw new Error(data.error || 'Ошибка запуска агента');
+      }
       setAgentResult(data);
       onAgentRun();
     } catch (err: unknown) {
@@ -238,7 +272,15 @@ export function AiLab({ language, onAgentRun, onMvpBuilt }: Props) {
         body: JSON.stringify({ brandName, niche, offer, accentColor, language }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Ошибка генерации MVP');
+      if (!res.ok) {
+        if (res.status === 429 || data.code === 'RESOURCE_EXHAUSTED') {
+          setMvpHtml(buildFallbackMvpHtml(brandName, niche, offer, accentColor));
+          setMvpError('Лимит Gemini API (429) временно исчерпан — прототип собран по локальному шаблону.');
+          onMvpBuilt();
+          return;
+        }
+        throw new Error(data.error || 'Ошибка генерации MVP');
+      }
       setMvpHtml(data.html);
       onMvpBuilt();
     } catch (err: unknown) {

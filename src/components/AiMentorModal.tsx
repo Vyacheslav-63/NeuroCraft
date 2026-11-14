@@ -16,6 +16,7 @@ interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   sources?: { title: string; uri: string }[];
+  fallbackNotice?: string;
 }
 
 interface Props {
@@ -87,11 +88,18 @@ export function AiMentorModal({
           role: 'model',
           text: data.answer || 'Ответ получен.',
           sources: Array.isArray(data.sources) ? data.sources : [],
+          fallbackNotice: data.fallbackMode
+            ? 'Дневная квота Gemini API (429) временно исчерпана — ответ сформирован из встроенной базы знаний NeuroCraft.'
+            : undefined,
         },
       ]);
       onQuestionAnswered?.();
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Ошибка соединения с AI-сервисом');
+      const raw = err instanceof Error ? err.message : 'Ошибка соединения с AI-сервисом';
+      const friendly = raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED')
+        ? 'Лимит запросов Gemini API временно исчерпан (429). Попробуйте чуть позже или проверьте квоту в Google AI Studio.'
+        : raw;
+      setErrorMsg(friendly);
     } finally {
       setLoading(false);
     }
@@ -148,6 +156,11 @@ export function AiMentorModal({
                     : 'bg-[#171B26] border border-[#334155]/70 text-[#E2E8F0]'
                 }`}
               >
+                {msg.fallbackNotice && (
+                  <div className="mb-2 rounded-lg bg-[#F59E0B]/15 border border-[#F59E0B]/40 px-2.5 py-1.5 text-[11px] font-semibold text-[#FCD34D]">
+                    {msg.fallbackNotice}
+                  </div>
+                )}
                 {msg.text}
               </div>
 

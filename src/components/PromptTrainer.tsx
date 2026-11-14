@@ -104,6 +104,11 @@ export function PromptTrainer({ progress, language, onCompleteQuest }: Props) {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 429 || data.code === 'RESOURCE_EXHAUSTED') {
+          runLocalFallbackEvaluate();
+          setErrorMsg('Лимит Gemini API временно исчерпан — выполнена локальная оценка промпта.');
+          return;
+        }
         throw new Error(data.error || 'Не удалось оценить промпт');
       }
 

@@ -77,8 +77,37 @@ npm start
 
 ---
 
+## Установка на Android, iOS, Windows и macOS
+
+### Вариант 1: Мгновенная установка как PWA (без магазинов приложений)
+Приложение полностью соответствует стандартам PWA (`vite-plugin-pwa`, Web App Manifest, Service Worker с офлайн-кэшем, иконки `192x192`, `512x512`, `maskable`, `apple-touch-icon.png` и `favicon.ico`) и имеет встроенную кнопку **«Установить NeuroCraft»**:
+- **Android (Chrome / Edge / Яндекс Браузер):** нажмите **«Установить»** внутри приложения или в меню браузера выберите *«Добавить на главный экран»*.
+- **iOS / iPadOS (Safari):** откройте сайт в Safari → **«Поделиться»** → **«На экран «Домой»** → **«Добавить»**.
+- **Windows 10 / 11 (Edge / Chrome):** нажмите кнопку установки в правой части адресной строки или кнопку **«Установить»** в боковой панели.
+- **macOS (Safari 17+ / Chrome):** в Safari выберите *«Файл» → «Добавить в Dock»*, либо установите через Chrome как отдельное приложение.
+
+### Вариант 2: Сборка нативных пакетов (`.apk`, `.ipa`, `.exe`, `.dmg`)
+В репозитории уже подготовлены конфигурационные файлы:
+- **Android (`.apk` / `.aab`) и iOS (`.ipa`)** — через Capacitor (`capacitor.config.ts`):
+  ```bash
+  npm run build
+  npm i @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
+  npx cap add android
+  npx cap add ios
+  npx cap sync
+  ```
+- **Windows (`.exe`) и macOS (`.dmg`)** — через Electron (`electron/main.cjs` и `electron-builder.yml`):
+  ```bash
+  npm run build
+  npm i -D electron electron-builder
+  npx electron-builder --win --mac
+  ```
+
+---
+
 ## Лицензия
 
 Проект распространяется под лицензией MIT. Подробнее см. файл [LICENSE](./LICENSE).
 
 Автор: **Поставной Вячеслав Алексеевич**
+

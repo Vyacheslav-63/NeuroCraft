@@ -25,7 +25,9 @@ import { AiMentorModal } from './components/AiMentorModal';
 import { BusinessHub } from './components/BusinessHub';
 import { CertificatePreviewModal } from './components/CertificatePreviewModal';
 import { LessonModal } from './components/LessonModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { PromptTrainer } from './components/PromptTrainer';
+import { PWAInstallButton } from './components/PWAInstallButton';
 import { RegistrationModal } from './components/RegistrationModal';
 import { SkillTreeMap } from './components/SkillTreeMap';
 import { STAGE_CERTIFICATES } from './data/curriculum';
@@ -171,6 +173,7 @@ export default function App() {
             <Diamond className="w-3.5 h-3.5" />
             <span>{progress.crystals}</span>
           </div>
+          <PWAInstallButton headerPill />
           <button
             type="button"
             onClick={() => openMentor()}
@@ -225,6 +228,9 @@ export default function App() {
                 {c}
               </button>
             ))}
+          </div>
+          <div className="pt-1">
+            <PWAInstallButton compact />
           </div>
         </div>
       )}
@@ -348,6 +354,8 @@ export default function App() {
               <span>{progress.registration ? 'Данные диплома' : 'Регистрация'}</span>
             </button>
           </div>
+
+          <PWAInstallButton />
 
           <div className="px-2 text-[11px] text-[#64748B] leading-snug">
             Автор: Поставной Вячеслав Алексеевич
@@ -599,6 +607,8 @@ export default function App() {
           onClose={() => setActiveCertChapterId(null)}
         />
       )}
+
+      <OfflineIndicator />
     </div>
   );
 }
