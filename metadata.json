@@ -1,0 +1,8 @@
+{
+  "name": "NeuroCraft",
+  "description": "Интерактивное игровое приложение для изучения LLM, промпт-инжиниринга, AI-агентов, веб-кодинга с ИИ и стратегий монетизации.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
