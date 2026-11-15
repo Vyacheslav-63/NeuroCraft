@@ -96,7 +96,12 @@ npm start
   npx cap add ios
   npx cap sync
   ```
-- **Windows (`.exe`) и macOS (`.dmg`)** — через Electron (`electron/main.cjs` и `electron-builder.yml`):
+- **macOS (`.dmg` и `.zip` Universal для Apple Silicon M1–M4 и Intel):**
+  ```bash
+  npm run build:mac
+  ```
+  Готовые файлы появятся в папке `release/` (либо запустите GitHub Action **`Build Installable Apps`** — `.github/workflows/build-apps.yml`).
+- **Windows (`.exe`) и macOS (`.dmg`) вручную** — через Electron (`electron/main.cjs` и `electron-builder.yml`):
   ```bash
   npm run build
   npm i -D electron electron-builder
@@ -107,10 +112,21 @@ npm start
 
 ## Глобальный деплой (доступ из любой страны без AI Studio)
 
-Ссылки вида `*.run.app` внутри AI Studio ограничены авторизацией и региональной политикой Google AI Studio. Чтобы приложение открывалось и устанавливалось как PWA **у любого пользователя в любой стране мира**:
+Ссылки вида `*.run.app` внутри AI Studio ограничены авторизацией и региональной политикой Google AI Studio. Чтобы приложение открывалось, устанавливалось как PWA и раздавало дистрибутивы **у любого пользователя в любой стране мира**:
 
+- **Автоматическая установка на VPS (Ubuntu / Debian / Docker):**
+  Скачайте архив сборки прямо из приложения (вкладка **«Сервер / Linux»** → `/api/download/server-bundle`) и выполните на сервере:
+  ```bash
+  tar -xzf NeuroCraft-Server-Deploy.tar.gz
+  sudo bash install-server.sh
+  ```
+  Скрипт автоматически установит Node.js 22 (или использует Docker Compose), соберёт проект и запустит системный сервис `neurocraft` на порту `3000`. Для автоматического HTTPS (необходимо для PWA на Android и iOS) используйте `Caddyfile.example`.
+- **Docker Compose (1 команда):**
+  ```bash
+  docker compose up -d --build
+  ```
 - **Render.com (1 клик через `render.yaml`):** подключите GitHub-репозиторий как Blueprint или Web Service (`Build: npm install && npm run build`, `Start: npm start`, опционально `GEMINI_API_KEY`).
-- **Docker / Railway / Fly.io / любой VPS:** используйте готовый `Dockerfile`:
+- **Docker / Railway / Fly.io вручную:**
   ```bash
   docker build -t neurocraft .
   docker run -p 3000:3000 -e GEMINI_API_KEY="ВАШ_КЛЮЧ" neurocraft

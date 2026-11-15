@@ -4,7 +4,9 @@
  * @license MIT
  */
 import express from "express";
+import fs from "fs";
 import path from "path";
+import { spawn } from "child_process";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 
@@ -493,6 +495,295 @@ ${langHint}
     console.error("ai-ask error:", message);
     res.status(status).json({ error: message, code });
   }
+});
+
+function streamArchive(
+  res: express.Response,
+  filename: string,
+  candidates: string[],
+  errorMessage: string
+) {
+  const existing = candidates.filter((item) => fs.existsSync(path.resolve(process.cwd(), item)));
+  if (existing.length === 0) {
+    res.status(404).json({ error: errorMessage });
+    return;
+  }
+
+  res.setHeader("Content-Type", "application/gzip");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.setHeader("Cache-Control", "no-store");
+
+  const tar = spawn("tar", ["-czf", "-", ...existing], { cwd: process.cwd() });
+  tar.stdout.pipe(res);
+  tar.on("error", () => {
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Не удалось сформировать архив." });
+    }
+  });
+}
+
+function streamReleaseFile(
+  res: express.Response,
+  relPath: string,
+  downloadName: string,
+  mimeType: string
+): boolean {
+  const fullPath = path.resolve(process.cwd(), relPath);
+  if (!fs.existsSync(fullPath)) {
+    return false;
+  }
+  const stat = fs.statSync(fullPath);
+  res.setHeader("Content-Type", mimeType);
+  res.setHeader("Content-Disposition", `attachment; filename="${downloadName}"`);
+  res.setHeader("Content-Length", String(stat.size));
+  res.setHeader("Cache-Control", "no-store");
+  fs.createReadStream(fullPath).pipe(res);
+  return true;
+}
+
+const RELEASE_FILES = {
+  macArm64: "release/NeuroCraft-Mac-AppleSilicon.zip",
+  macX64: "release/NeuroCraft-Mac-Intel.zip",
+  windows: "release/NeuroCraft-Windows.zip",
+  linux: "release/NeuroCraft-Linux.tar.gz",
+};
+
+// 5. Status of pre-built desktop installers on this server
+app.get("/api/download/status", (_req, res) => {
+  const getSizeMb = (relPath: string): number | null => {
+    const fullPath = path.resolve(process.cwd(), relPath);
+    if (!fs.existsSync(fullPath)) return null;
+    return Math.round((fs.statSync(fullPath).size / (1024 * 1024)) * 10) / 10;
+  };
+  res.json({
+    macArm64: fs.existsSync(path.resolve(process.cwd(), RELEASE_FILES.macArm64)),
+    macX64: fs.existsSync(path.resolve(process.cwd(), RELEASE_FILES.macX64)),
+    windows: fs.existsSync(path.resolve(process.cwd(), RELEASE_FILES.windows)),
+    linux: fs.existsSync(path.resolve(process.cwd(), RELEASE_FILES.linux)),
+    sizesMb: {
+      macArm64: getSizeMb(RELEASE_FILES.macArm64),
+      macX64: getSizeMb(RELEASE_FILES.macX64),
+      windows: getSizeMb(RELEASE_FILES.windows),
+      linux: getSizeMb(RELEASE_FILES.linux),
+    },
+  });
+});
+
+// 6. Direct download for macOS (.app inside .zip for Apple Silicon or Intel; falls back to Mac Builder archive)
+app.get("/api/download/mac-package", (req, res) => {
+  const arch = String(req.query.arch || "arm64").toLowerCase();
+  if (arch === "x64" || arch === "intel") {
+    if (streamReleaseFile(res, RELEASE_FILES.macX64, "NeuroCraft-Mac-Intel.zip", "application/zip")) {
+      return;
+    }
+  }
+  if (streamReleaseFile(res, RELEASE_FILES.macArm64, "NeuroCraft-Mac-AppleSilicon.zip", "application/zip")) {
+    return;
+  }
+  streamArchive(
+    res,
+    "NeuroCraft-Mac-Builder.tar.gz",
+    [
+      "Install-NeuroCraft-Mac.command",
+      "package.json",
+      "index.html",
+      "vite.config.ts",
+      "tsconfig.json",
+      "electron",
+      "electron-builder.yml",
+      "public",
+      "scripts",
+      "src",
+      "dist",
+      "README.md",
+      "LICENSE",
+    ],
+    "Файлы сборки для Mac не найдены."
+  );
+});
+
+// 7. Direct download for Windows x64 (.zip with NeuroCraft.exe; falls back to Desktop Builder archive)
+app.get("/api/download/windows", (_req, res) => {
+  if (streamReleaseFile(res, RELEASE_FILES.windows, "NeuroCraft-Windows.zip", "application/zip")) {
+    return;
+  }
+  streamArchive(
+    res,
+    "NeuroCraft-Windows-Builder.tar.gz",
+    [
+      "package.json",
+      "index.html",
+      "vite.config.ts",
+      "tsconfig.json",
+      "electron",
+      "electron-builder.yml",
+      "public",
+      "src",
+      "dist",
+      "README.md",
+      "LICENSE",
+    ],
+    "Файлы сборки для Windows не найдены."
+  );
+});
+
+// 8. Direct download for Linux x64 (.tar.gz desktop app)
+app.get("/api/download/linux", (_req, res) => {
+  if (streamReleaseFile(res, RELEASE_FILES.linux, "NeuroCraft-Linux.tar.gz", "application/gzip")) {
+    return;
+  }
+  streamArchive(
+    res,
+    "NeuroCraft-Linux-Builder.tar.gz",
+    [
+      "package.json",
+      "index.html",
+      "vite.config.ts",
+      "tsconfig.json",
+      "electron",
+      "electron-builder.yml",
+      "public",
+      "src",
+      "dist",
+      "README.md",
+      "LICENSE",
+    ],
+    "Файлы сборки для Linux не найдены."
+  );
+});
+
+// 9. iOS WebClip configuration profile (.mobileconfig) for Home Screen app installation
+app.get("/api/download/ios-webclip", (req, res) => {
+  const proto = String(req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0].trim();
+  const host = String(req.headers["x-forwarded-host"] || req.get("host") || "localhost:3000").split(",")[0].trim();
+  const targetUrl = `${proto}://${host}/`;
+
+  const iconPath = path.resolve(process.cwd(), "public/apple-touch-icon.png");
+  const iconBase64 = fs.existsSync(iconPath) ? fs.readFileSync(iconPath).toString("base64") : "";
+  const iconBlock = iconBase64
+    ? `      <key>Icon</key>\n      <data>${iconBase64}</data>`
+    : "";
+
+  const mobileconfig = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>FullScreen</key>
+      <true/>
+${iconBlock}
+      <key>IgnoreManifestScope</key>
+      <false/>
+      <key>IsRemovable</key>
+      <true/>
+      <key>Label</key>
+      <string>NeuroCraft</string>
+      <key>PayloadDescription</key>
+      <string>Ярлык веб-приложения NeuroCraft — Академия ИИ</string>
+      <key>PayloadDisplayName</key>
+      <string>NeuroCraft WebClip</string>
+      <key>PayloadIdentifier</key>
+      <string>ru.postavnoy.neurocraft.webclip</string>
+      <key>PayloadType</key>
+      <string>com.apple.webClip.managed</string>
+      <key>PayloadUUID</key>
+      <string>7B5D9C30-8E22-4F4A-9A7C-5A1B8E2C4D01</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>Precomposed</key>
+      <true/>
+      <key>URL</key>
+      <string>${targetUrl}</string>
+    </dict>
+  </array>
+  <key>PayloadDescription</key>
+  <string>Установка приложения NeuroCraft (Академия ИИ) на экран Домой iPhone / iPad</string>
+  <key>PayloadDisplayName</key>
+  <string>NeuroCraft</string>
+  <key>PayloadIdentifier</key>
+  <string>ru.postavnoy.neurocraft.profile</string>
+  <key>PayloadOrganization</key>
+  <string>Поставной Вячеслав Алексеевич</string>
+  <key>PayloadRemovalDisallowed</key>
+  <false/>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadUUID</key>
+  <string>7B5D9C30-8E22-4F4A-9A7C-5A1B8E2C4D00</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>`;
+
+  res.setHeader("Content-Type", "application/x-apple-aspen-config");
+  res.setHeader("Content-Disposition", 'attachment; filename="NeuroCraft-iOS.mobileconfig"');
+  res.setHeader("Cache-Control", "no-store");
+  res.send(mobileconfig);
+});
+
+// 10. Android Capacitor project bundle (.tar.gz) for compiling .APK/.AAB
+app.get("/api/download/android-project", (_req, res) => {
+  streamArchive(
+    res,
+    "NeuroCraft-Android-Capacitor.tar.gz",
+    [
+      "capacitor.config.ts",
+      "package.json",
+      "index.html",
+      "vite.config.ts",
+      "tsconfig.json",
+      "public",
+      "src",
+      "dist",
+      ".github",
+      "README.md",
+      "LICENSE",
+    ],
+    "Файлы проекта Capacitor для Android не найдены."
+  );
+});
+
+// 11. Complete Self-Hosted Server Deployment Bundle (.tar.gz)
+app.get("/api/download/server-bundle", (req, res) => {
+  const includeDesktop = String(req.query.includeDesktop || "") === "1";
+  const candidates = [
+    "install-server.sh",
+    "Dockerfile",
+    "docker-compose.yml",
+    "Caddyfile.example",
+    "render.yaml",
+    ".dockerignore",
+    ".env.example",
+    "package.json",
+    "bun.lock",
+    "server.ts",
+    "tsconfig.json",
+    "vite.config.ts",
+    "index.html",
+    "metadata.json",
+    "public",
+    "src",
+    "dist",
+    "electron",
+    "electron-builder.yml",
+    "capacitor.config.ts",
+    "scripts",
+    "Install-NeuroCraft-Mac.command",
+    ".github",
+    "README.md",
+    "LICENSE",
+  ];
+  if (includeDesktop && fs.existsSync(path.resolve(process.cwd(), "release"))) {
+    candidates.push("release");
+  }
+  streamArchive(
+    res,
+    includeDesktop ? "NeuroCraft-Full-Server-With-Apps.tar.gz" : "NeuroCraft-Server-Deploy.tar.gz",
+    candidates,
+    "Файлы серверной сборки не найдены."
+  );
 });
 
 async function startServer() {

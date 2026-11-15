@@ -1,0 +1,8 @@
+# Пример конфигурации Caddy для автоматического HTTPS (Let's Encrypt).
+# HTTPS обязателен для установки PWA на Android (Chrome) и iOS (Safari) по вашему домену.
+# Замените academy.example.com на ваш домен с A-записью на IP сервера.
+
+academy.example.com {
+    encode gzip zstd
+    reverse_proxy 127.0.0.1:3000
+}

@@ -23,9 +23,14 @@ nsis:
   createStartMenuShortcut: true
 mac:
   category: public.app-category.education
+  identity: null
   target:
-    - dmg
-    - zip
+    - target: dmg
+      arch:
+        - universal
+    - target: zip
+      arch:
+        - universal
   icon: public/pwa-512x512.png
 dmg:
   title: NeuroCraft AI Academy
